@@ -5,6 +5,7 @@ date: "1/17/2021"
 output:
   html_document:
     df_print: paged
+    fig_cap: yes
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning = FALSE}
@@ -27,7 +28,7 @@ library(tidymodels)
 
 # Creating Plots
 
-```{r, echo = FALSE, message=FALSE, warning = FALSE}
+```{r, echo = FALSE, message=FALSE, warning = FALSE, fig.cap = "Source: Palmer Penguins Data Set"}
 library(palmerpenguins)
 ggplot(penguins, aes(x=island, fill = island)) + 
   geom_bar() + 
@@ -40,8 +41,7 @@ ggplot(penguins, aes(x=island, fill = island)) +
            fontface = "bold") + # Labels for annotations 
   scale_fill_brewer(palette = "Blues") +
   theme_bw() +
-  labs(x = "Island", y = "Count", title = "Penguins per Island",
-       caption = "Source: Palmer Penguins Data Set") +
+  labs(x = "Island", y = "Count", title = "Penguins per Island") +
   theme(legend.position = "none",
         text = element_text(family = "serif"),
         plot.title.position = "plot",
@@ -50,7 +50,7 @@ ggplot(penguins, aes(x=island, fill = island)) +
         plot.title = element_text(face = "bold", size = 15))  # Gets rid of the legend
 ```
 
-```{r, echo = FALSE,message=FALSE, warning = FALSE}
+```{r, echo = FALSE, message=FALSE, warning = FALSE, fig.cap="Source: R Diamonds Dataset"}
 library(viridis)
 
 ggplot(data = diamonds, mapping = aes(x = carat, y = price)) +
@@ -60,8 +60,7 @@ ggplot(data = diamonds, mapping = aes(x = carat, y = price)) +
  #scale_y_log10() +
  scale_color_brewer(palette = "Set3") +
  labs(title = "How much can you get for a diamond based on cut?",
-      subtitle = "Lines show GAM estimate of mean values for each level of cut", 
-      caption = "Source: R Diamonds Dataset",
+      subtitle = "Lines show GAM estimate of mean values for each level of cut",
       color = element_blank()) +
  xlab("Carat") +
  ylab("Price") +
@@ -75,17 +74,17 @@ ggplot(data = diamonds, mapping = aes(x = carat, y = price)) +
 
 ### Interactive Plots (hover over points and line)
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE, fig.cap="Source: Delphi Group COVID Survey data"}
 
 covid = read_csv("covid_data.csv")
 
-covid %>%
+state_avg <- covid %>%
   group_by(geo_value, signal) %>%
   summarize(
     avg = mean(value, na.rm = T)
   ) %>%
   pivot_wider(id_cols = geo_value, names_from = signal, values_from = avg) %>%
-  ungroup() -> state_avg
+  ungroup() 
 
 mod <- lm(smoothed_cli ~ smoothed_wearing_mask, data = state_avg)
 mod_aug <- broom::augment(mod, data = state_avg)
@@ -97,7 +96,8 @@ p2 = state_avg %>%
     geom_point(aes(text = toupper(geo_value))) +  
     geom_line(data = mod_aug, aes(x = smoothed_wearing_mask, y = .fitted, text = paste0("y = ",round(mod$estimate[1],2)," + ",round(mod$estimate[2],2),"x" )),color = "blue") +
     theme_minimal() +
-    labs(title = "Mask-wearing in Public and COVID-like Symptoms (CLI)\nfor each State", x = "% of Pop. Wearing Masks Outdoors", y = "% of Pop. Experiencing CLI") +
+    labs(title = "Mask-wearing in Public and COVID-like Symptoms (CLI)\nfor each State", 
+         x = "% of Pop. Wearing Masks Outdoors", y = "% of Pop. Experiencing CLI") +
   theme(plot.title.position = "plot", text = element_text(size = 10))
 
 ggplotly(p2, tooltip = "text")
@@ -105,7 +105,7 @@ ggplotly(p2, tooltip = "text")
 
 # Creating Maps
 ### State Bins
-```{r,echo = FALSE, message = FALSE, warning = FALSE}
+```{r,echo = FALSE, message = FALSE, warning = FALSE, fig.cap="Source: Github Tony McGovern US County Election Results"}
 county_level_2020 = read_csv("https://raw.githubusercontent.com/tonmcg/US_County_Level_Election_Results_08-20/master/2020_US_County_Level_Presidential_Results.csv")
 
 state_level_2020 = county_level_2020 %>%
@@ -143,7 +143,7 @@ statebins(state_data = subset(state_level_2020,
 
 ### Interactive and Colored Map
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE, fig.cap="Source: Github Tony McGovern US County Election Results"}
 
 #Map Data
 county_level_2020 = read_csv("https://raw.githubusercontent.com/tonmcg/US_County_Level_Election_Results_08-20/master/2020_US_County_Level_Presidential_Results.csv")
@@ -177,8 +177,7 @@ p3 <- ggplot(data = state_elec_2020,
   geom_polygon(aes(text = paste("State:", state_name,"\n% Rep:",round(pct_gop,2)*100,"\n% Dem:", round(pct_dem,2)*100)),color = "gray90", size = 0.1) + 
   #coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
   scale_fill_manual(values = party_colors) +
-  labs(title = "Wins by <b><span style = 'color: #2E74C0;'>Biden</span></b> and <b><span style = 'color: #CB454A;'>Trump</span></b> in the 2020 Election",
-       caption = "Source: Github Data Repository"
+  labs(title = "Wins by <b><span style = 'color: #2E74C0;'>Biden</span></b> and <b><span style = 'color: #CB454A;'>Trump</span></b> in the 2020 Election"
   ) +
   theme_map() +
   theme(text = element_text(family = "Palatino"),
@@ -191,7 +190,7 @@ ggplotly(p3, tooltip = "text")
 
 # Time Series
 
-```{r, echo = FALSE,message = FALSE, warning = FALSE}
+```{r, echo = FALSE,message = FALSE, warning = FALSE, fig.cap="Source: Delphi Group COVID Survey data"}
 covid = read_csv("covid_data.csv")
 
 part3 = covid %>%
