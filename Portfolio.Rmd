@@ -1,0 +1,225 @@
+---
+title: "R Data Visualizations Portfolio"
+author: "Tolga Atabas"
+date: "1/17/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE, message=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyverse)
+library(maps)
+library(ggthemes)
+library(statebins)
+library(ggtext)
+library(dplyr)
+library(socviz)
+library(mapproj)
+library(maps)
+library(ggthemes)
+library(ggtext)
+library(plotly)
+library(tidymodels)
+```
+
+# Creating Plots
+
+```{r, echo = FALSE, message=FALSE, warning = FALSE}
+library(palmerpenguins)
+ggplot(penguins, aes(x=island, fill = island)) + 
+  geom_bar() + 
+  theme(text = element_text(family = "serif")) +
+  annotate("text", # What type of annotation to use 
+           y = c(60, 130, 175), # X positions of annotations
+           x =c("Torgersen", "Dream", "Biscoe"), # Y positions of annotations (weird because this is a barchart)
+           label =c("Torgersen", "Dream", "Biscoe"),
+           color = "black",
+           fontface = "bold") + # Labels for annotations 
+  scale_fill_brewer(palette = "Blues") +
+  theme_bw() +
+  labs(x = "Island", y = "Count", title = "Penguins per Island",
+       caption = "Source: Palmer Penguins Data Set") +
+  theme(legend.position = "none",
+        text = element_text(family = "serif"),
+        plot.title.position = "plot",
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.title = element_text(face = "bold", size = 15))  # Gets rid of the legend
+```
+
+```{r, echo = FALSE,message=FALSE, warning = FALSE}
+library(viridis)
+
+ggplot(data = diamonds, mapping = aes(x = carat, y = price)) +
+ #geom_point(alpha = 0.1) +
+ geom_smooth(aes(color = cut), se = FALSE) +
+ #scale_x_log10() +
+ #scale_y_log10() +
+ scale_color_brewer(palette = "Set3") +
+ labs(title = "How much can you get for a diamond based on cut?",
+      subtitle = "Lines show GAM estimate of mean values for each level of cut", 
+      caption = "Source: R Diamonds Dataset",
+      color = element_blank()) +
+ xlab("Carat") +
+ ylab("Price") +
+ theme_bw() +
+ theme(panel.grid.major = element_blank(), 
+       panel.grid.minor = element_blank(), 
+       panel.background = element_blank(),
+       legend.position = "top",
+       text = element_text(family ="mono"))
+```
+
+### Interactive Plots (hover over points and line)
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+
+covid = read_csv("covid_data.csv")
+
+covid %>%
+  group_by(geo_value, signal) %>%
+  summarize(
+    avg = mean(value, na.rm = T)
+  ) %>%
+  pivot_wider(id_cols = geo_value, names_from = signal, values_from = avg) %>%
+  ungroup() -> state_avg
+
+mod <- lm(smoothed_cli ~ smoothed_wearing_mask, data = state_avg)
+mod_aug <- broom::augment(mod, data = state_avg)
+mod <- tidy(mod)
+
+p2 = state_avg %>%
+    mutate(state = str_to_upper(geo_value)) %>%
+    ggplot(aes(x = smoothed_wearing_mask, y = smoothed_cli)) +
+    geom_point(aes(text = toupper(geo_value))) +  
+    geom_line(data = mod_aug, aes(x = smoothed_wearing_mask, y = .fitted, text = paste0("y = ",round(mod$estimate[1],2)," + ",round(mod$estimate[2],2),"x" )),color = "blue") +
+    theme_minimal() +
+    labs(title = "Mask-wearing in Public and COVID-like Symptoms (CLI)\nfor each State", x = "% of Pop. Wearing Masks Outdoors", y = "% of Pop. Experiencing CLI") +
+  theme(plot.title.position = "plot", text = element_text(size = 10))
+
+ggplotly(p2, tooltip = "text")
+```
+
+# Creating Maps
+### State Bins
+```{r,echo = FALSE, message = FALSE, warning = FALSE}
+county_level_2020 = read_csv("https://raw.githubusercontent.com/tonmcg/US_County_Level_Election_Results_08-20/master/2020_US_County_Level_Presidential_Results.csv")
+
+state_level_2020 = county_level_2020 %>%
+  group_by(state_name) %>%
+  summarize(gop_votes = sum(votes_gop),
+         dem_votes = sum(votes_dem),
+         total_votes = sum(total_votes),
+         diff = sum(diff)) %>%
+  mutate(
+    pct_gop = gop_votes/total_votes,
+    pct_dem = dem_votes/total_votes
+  ) %>%
+  ungroup()
+
+us_states <- map_data("state")
+
+state_level_2020$party <- ifelse(state_level_2020$pct_gop > state_level_2020$pct_dem, "Republican", "Democrat") #making a party variable
+
+state_level_2020$region <- tolower(state_level_2020$state_name) #creating a common column to merge with
+state_elec_2020 <- left_join(us_states, state_level_2020) #merging
+
+statebins(state_data = subset(state_level_2020, 
+                              region %nin% "district of columbia"), 
+          state_col = "state_name", 
+          value_col = "pct_dem", 
+          dark_label = "white",
+          light_label = "white",
+          palette = "Blues",
+          font_size = 3,
+          direction = 1) +
+  labs(fill = "Percent Biden") +
+  theme_statebins() +
+  theme(legend.position = "right") 
+```
+
+### Interactive and Colored Map
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+
+#Map Data
+county_level_2020 = read_csv("https://raw.githubusercontent.com/tonmcg/US_County_Level_Election_Results_08-20/master/2020_US_County_Level_Presidential_Results.csv")
+
+state_level_2020 = county_level_2020 %>%
+  group_by(state_name) %>%
+  summarize(gop_votes = sum(votes_gop),
+         dem_votes = sum(votes_dem),
+         total_votes = sum(total_votes),
+         diff = sum(diff)) %>%
+  mutate(
+    pct_gop = gop_votes/total_votes,
+    pct_dem = dem_votes/total_votes
+  ) %>%
+  ungroup()
+
+
+us_states <- map_data("state")
+
+state_level_2020$party <- ifelse(state_level_2020$pct_gop > state_level_2020$pct_dem, "Republican", "Democrat") #making a party variable
+
+state_level_2020$region <- tolower(state_level_2020$state_name) #creating a common column to merge with
+state_elec_2020 <- left_join(us_states, state_level_2020) #merging
+
+#GGPLOT
+party_colors <- c("#2E74C0", "#CB454A") 
+
+p3 <- ggplot(data = state_elec_2020,
+       mapping = aes(x = long, y = lat,
+           group = group, fill = party)) +
+  geom_polygon(aes(text = paste("State:", state_name,"\n% Rep:",round(pct_gop,2)*100,"\n% Dem:", round(pct_dem,2)*100)),color = "gray90", size = 0.1) + 
+  #coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  scale_fill_manual(values = party_colors) +
+  labs(title = "Wins by <b><span style = 'color: #2E74C0;'>Biden</span></b> and <b><span style = 'color: #CB454A;'>Trump</span></b> in the 2020 Election",
+       caption = "Source: Github Data Repository"
+  ) +
+  theme_map() +
+  theme(text = element_text(family = "Palatino"),
+        plot.title = element_markdown(),
+        legend.position = "none") 
+
+#PLOTLY
+ggplotly(p3, tooltip = "text")
+```
+
+# Time Series
+
+```{r, echo = FALSE,message = FALSE, warning = FALSE}
+covid = read_csv("covid_data.csv")
+
+part3 = covid %>%
+  filter(signal == "smoothed_restaurant_1d" & (geo_value == "pa" | geo_value == "nj" | 
+           geo_value == "ny")) %>%
+  mutate(month = case_when(
+    time_value >= "2020-10-01" & time_value <= "2020-10-31" ~ "October",
+    time_value >= "2020-11-01" & time_value <= "2020-11-30" ~ "November",
+    time_value >= "2020-12-01" & time_value <= "2020-12-31" ~ "December"
+  )) %>%
+  mutate(alluvium = c(seq(1,31*3,by = 1),seq(1,30*3,by=1),seq(1,31*3,by=1)))
+
+ggplot(part3, aes(x = time_value, y = value, ymin = value - 2*stderr, ymax = value + 2*stderr)) +
+  geom_line(aes(color = geo_value)) +
+  geom_ribbon(aes(fill = geo_value),alpha = 0.2)+
+  theme_minimal()+
+  theme(legend.position = "none") +
+  annotate("text", x = as.Date("2021-01-02"), y = 9, label = "NJ", color = "#CE5C5C") +
+  annotate("text", x = as.Date("2021-01-02"), y = 7, label = "NY", color = "#EF9C0C") +
+  annotate("text", x = as.Date("2021-01-02"), y = 5, label = "PA", color = "#0A2F5F") +
+  geom_vline(xintercept = as.Date("2020-12-12"), color = "#0A2F5F")+
+  annotate("text", x = as.Date("2020-12-13"), y = 20, angle = 270, color = "#0A2F5F", label = "PA Implements Limitations", size = 2) +
+  scale_color_manual(values = c("#CE5C5C","#EF9C0C","#0A2F5F")) +
+  scale_fill_manual(values = c("#CE5C5C","#EF9C0C","#0A2F5F")) +
+  scale_x_date(date_labels = "%Y %b") +
+  labs(title = "% of Tri-State Area Resident that went to a restaurant, cafe, or bar within the past day",
+       subtitle = "Smoothed Estimate",
+       x = element_blank(),
+       y = element_blank()) +
+  theme(plot.title.position = "plot")
+```
